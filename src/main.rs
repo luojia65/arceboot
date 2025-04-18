@@ -11,10 +11,16 @@ use axfs::api as fs;
 use fs::File;
 use object::{Object, ObjectSection};
 
-const IMG_PATH: &'static str = "target/arceboot.img";
+fn scan_disk() -> std::io::Result<RamDisk> {
+    // By now, we provide image through command line arguments.
+    // In the future we should scan bootload media and choose which disk to boot from.
+    let args = std::env::args();
+    if args.len() < 2 {
+        eprintln!("Please provide disk from program argument.");
+        std::process::exit(1);
+    }
+    let path = args.skip(1).next().unwrap();
 
-fn make_disk() -> std::io::Result<RamDisk> {
-    let path = std::env::current_dir()?.join(IMG_PATH);
     println!("Loading disk image from {:?} ...", path);
     let data = std::fs::read(path)?;
     println!("size = {} bytes", data.len());
@@ -23,8 +29,8 @@ fn make_disk() -> std::io::Result<RamDisk> {
 
 #[cfg_attr(feature = "axstd", unsafe(no_mangle))]
 fn main() {
-    println!("opening arceboot.img...");
-    let disk = make_disk().expect("failed to load disk image");
+    println!("Opening arceboot.img...");
+    let disk = scan_disk().expect("load disk image");
     axfs::init_filesystems(AxDeviceContainer::from_one(disk));
     let fname = "/EFI/BOOT/BOOTRISCV64.EFI";
     println!("Reading fname: {}", fname);
@@ -36,10 +42,10 @@ fn main() {
     for section in efi.sections() {
         println!("{}", section.name().unwrap());
     }
-    println!("finished opening arceboot.img...");
-    
+    println!("Finished opening arceboot.img...");
+
     // ... 加载流程
-    
+
     // address: usize
     // let entry = mem_address as Entry;
     //
